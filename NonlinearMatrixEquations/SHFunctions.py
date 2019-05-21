@@ -70,3 +70,49 @@ def MakeStochA(dim, degree = 1):
         A[1,i,i] = A[1,i,i] - r
         
     return A
+
+def MakeSingularA(dim, degree, delta = 0):
+    A = np.zeros((degree+1, dim, dim))
+    K = np.random.rand(dim, dim)
+    for i in range(dim):
+        K[i,i] = 0
+    k = np.sum(K, axis = 1)
+    for j in range(dim):
+        K[j,:] = K[j,:]/k[j]
+    W = (1 - delta) * K
+    
+    if degree == 2:
+        A[0,:,:] = W
+        A[1,:,:] = W - 3*np.eye(dim)
+        A[2,:,:] = W + 3*delta * np.eye(dim)
+        A /= 3
+    elif degree == 4:
+        A[0,:,:] = 16*W
+        A[1,:,:] = 2*W - 26*np.eye(dim)
+        A[2,:,:] = W
+        A[3,:,:] = 6*W
+        A[4,:,:] = W + 26*delta * np.eye(dim)
+        A /= 26
+    elif degree == 6:
+        A[0,:,:] = 4096*W
+        A[1,:,:] = 56*W - 6200*np.eye(dim)
+        A[2,:,:] = 384*W
+        A[3,:,:] = 1312*W
+        A[4,:,:] = 321*W
+        A[5,:,:] = 30*W
+        A[6,:,:] = W + 6200*delta * np.eye(dim)
+        A /= 6200
+    elif degree == 8:
+        A[0,:,:] = 2985984*W
+        A[1,:,:] = 21024*W - 4500000*np.eye(dim)
+        A[2,:,:] = 311040*W
+        A[3,:,:] = 905472*W
+        A[4,:,:] = 244080*W
+        A[5,:,:] = 30312*W
+        A[6,:,:] = 2017*W
+        A[7,:,:] = 70*W
+        A[8,:,:] = W + 4500000*delta*np.eye(dim)
+        A /= 4500000
+    else:
+        raise ValueError('degree 2, 4, 6, 8 외에는 준비되지 않았습니다.')
+    return A
