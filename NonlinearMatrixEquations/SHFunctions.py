@@ -9,7 +9,7 @@ from time import time
 from matplotlib import pyplot as plt
 import os
 
-def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
+def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
     if np.isnan(X0): # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         X0 = np.zeros((A.shape[1],A.shape[2]))
     
@@ -38,13 +38,34 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
         vP = np.reshape(Pnomial(X0, A), m**2, 'F') # Reshape는 반드시 Fortran 방식으로
         h = nla.solve(P_X, vP)
         H = np.reshape(h, (m, m), order = 'F')
-        Hs.append(H) # H_i 저장
-        X0 = X0 - H # Newton Sequence 적용
-        Xs.append(X0) # X_i 저장
         
-        err = nla.norm(Pnomial(X0, A), 'fro')
-        errs.append(err) # err 저장
+        if cls == 'Pure':
+            X0 = X0 - H # Newton Sequence 적용
+            err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            
+            Xs.append(X0) # X_i 저장
+            Hs.append(H) # H_i 저장
+            errs.append(err) # err 저장
         
+        elif cls == 'Modified':
+            X0 = X0 - 2*H # modified Newton Sequence 적용
+            err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            if err <= tol:
+                Xs.append(X0) # X_i 저장
+                Hs.append(H) # H_i 저장
+                errs.append(err) # err 저장
+                break
+            X0 = X0 + H # pure Newton 재적용
+            err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            
+            Xs.append(X0) # X_i 저장
+            Hs.append(H) # H_i 저장
+            errs.append(err) # err 저장
+            
+        else:
+            print('준비되지 않은 종류의 Newton method라 pure method로 전환합니다.')
+            cls = 'Pure'
+            
         iter += 1
     S = Xs[-1]
     return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs}
