@@ -67,8 +67,25 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
             cls = 'Pure'
             
         iter += 1
-    S = Xs[-1]
-    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs}
+    
+    S = Xs[-1] # Solution
+    
+    # Vectorize of S - X_{i}와 X_{i+1} - X_{i} : cos 계산
+    vSmX = []
+    vXmX = []
+    for i in range(len(Xs)-1):
+        vSmX.append(np.reshape(S - Xs[i], S.shape[0]*S.shape[1], order='F'))
+        vXmX.append(np.reshape(Xs[i+1] - Xs[i], S.shape[0]*S.shape[1], order='F'))
+    cSX = []
+    cXX = []
+    for i in range(len(vSmX)-1):
+        x1, y1 = vSmX[i+1], vSmX[i]
+        x2, y2 = vXmX[i+1], vXmX[i]
+        c1 = np.dot(x1,y1) / (nla.norm(x1,2)*nla.norm(y1,2))
+        c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
+        cSX.append(c1)
+        cXX.append(c2)
+    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'csSmX':cSX, 'csXmX':cXX}
 
 def Pnomial(X, A):
 #     S = np.zeros((X.shape[0],X.shape[1]))
