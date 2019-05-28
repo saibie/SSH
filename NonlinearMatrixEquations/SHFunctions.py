@@ -85,7 +85,7 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
         c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
         cSX.append(c1)
         cXX.append(c2)
-    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'csSmX':cSX, 'csXmX':cXX}
+    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX}
 
 def Pnomial(X, A):
 #     S = np.zeros((X.shape[0],X.shape[1]))
