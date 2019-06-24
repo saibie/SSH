@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import os
 
 def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
-    if np.isnan(X0): # X0가 주어지지 않았을 때 m by m zero 행렬 처리
+    if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         X0 = np.zeros((A.shape[1],A.shape[2]))
     
     if A.shape[1] != A.shape[2]: # A가 square matrices의 모음이 아닐 때 예외처리
