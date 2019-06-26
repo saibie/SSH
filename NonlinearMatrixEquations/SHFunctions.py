@@ -154,3 +154,78 @@ def MakeSingularA(dim, degree, delta = 0):
     else:
         raise ValueError('degree 2, 4, 6, 8 외에는 준비되지 않았습니다.')
     return A
+
+def SimpNewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
+    if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
+        X0 = np.zeros((A.shape[1],A.shape[2]))
+    
+    if A.shape[1] != A.shape[2]: # A가 square matrices의 모음이 아닐 때 예외처리
+        raise ValueError('A가 정방행렬이 아닙니다.')
+        
+    m, n = A.shape[1], A.shape[0]-1 # m, n 초기화
+    
+    if np.isnan(tol): # tol이 주어지지 않았을 때 초기화
+        tol = m * 1e-15
+        
+    Xs = [X0] # Xs는 X들을 담은 리스트로 초기화
+    P_Xs, Hs, errs = [], [], [] # P_X, H, err 리스트 초기화
+    S = np.zeros((A.shape[1],A.shape[2]))
+    
+    iter = 0
+    err = 1e10 # error 초기화
+    
+    # Newton Iteration 시작
+    while (err > tol) and (iter < maxiter):
+        P_X = np.zeros((m, m))
+        for k in range(1,n+1):
+            P_X = P_X + k * A[k,:,:] @ nla.matrix_power(X0,k-1)
+        P_Xs.append(P_X) # P_X_i 저장
+        H = nla.solve(P_X,Pnomial(X0, A))
+        
+        if cls == 'Pure':
+            X0 = X0 - H # Newton Sequence 적용
+            err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            
+            Xs.append(X0) # X_i 저장
+            Hs.append(H) # H_i 저장
+            errs.append(err) # err 저장
+        
+        elif cls == 'Modified':
+            X0 = X0 - 2*H # modified Newton Sequence 적용
+            err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            if err <= tol:
+                Xs.append(X0) # X_i 저장
+                Hs.append(H) # H_i 저장
+                errs.append(err) # err 저장
+                break
+            X0 = X0 + H # pure Newton 재적용
+            err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            
+            Xs.append(X0) # X_i 저장
+            Hs.append(H) # H_i 저장
+            errs.append(err) # err 저장
+            
+        else:
+            print('준비되지 않은 종류의 Newton method라 pure method로 전환합니다.')
+            cls = 'Pure'
+            
+        iter += 1
+    
+    S = Xs[-1] # Solution
+    
+    # Vectorize of S - X_{i}와 X_{i+1} - X_{i} : cos 계산
+    vSmX = []
+    vXmX = []
+    for i in range(len(Xs)-1):
+        vSmX.append(np.reshape(S - Xs[i], S.shape[0]*S.shape[1], order='F'))
+        vXmX.append(np.reshape(Xs[i+1] - Xs[i], S.shape[0]*S.shape[1], order='F'))
+    cSX = []
+    cXX = []
+    for i in range(len(vSmX)-1):
+        x1, y1 = vSmX[i+1], vSmX[i]
+        x2, y2 = vXmX[i+1], vXmX[i]
+        c1 = np.dot(x1,y1) / (nla.norm(x1,2)*nla.norm(y1,2))
+        c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
+        cSX.append(c1)
+        cXX.append(c2)
+    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX}
