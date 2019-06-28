@@ -37,6 +37,7 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
         P_Xs.append(P_X) # P_X_i 저장
         vP = np.reshape(Pnomial(X0, A), m**2, 'F') # Reshape는 반드시 Fortran 방식으로
         h = nla.solve(P_X, vP)
+#         h = nla.lstsq(P_X, vP)[0]
         H = np.reshape(h, (m, m), order = 'F')
         
         if cls == 'Pure':
@@ -181,6 +182,7 @@ def SimpNewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
             P_X = P_X + k * A[k,:,:] @ nla.matrix_power(X0,k-1)
         P_Xs.append(P_X) # P_X_i 저장
         H = nla.solve(P_X,Pnomial(X0, A))
+#         H = nla.lstsq(P_X,Pnomial(X0, A))[0]
         
         if cls == 'Pure':
             X0 = X0 - H # Newton Sequence 적용
