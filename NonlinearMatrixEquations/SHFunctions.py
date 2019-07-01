@@ -156,6 +156,55 @@ def MakeSingularA(dim, degree, delta = 0):
         raise ValueError('degree 2, 4, 6, 8 외에는 준비되지 않았습니다.')
     return A
 
+def MakeGenSingA(dim, degree, delta = 0):
+    A = np.zeros((degree+1, dim, dim))
+    
+    if degree == 2:
+        A[0,:,:] = genW(dim, delta)
+        A[1,:,:] = genW(dim, delta) - 3*np.eye(dim)
+        A[2,:,:] = genW(dim, delta) + 3*delta * np.eye(dim)
+        A /= 3
+    elif degree == 4:
+        A[0,:,:] = 16*genW(dim, delta)
+        A[1,:,:] = 2*genW(dim, delta) - 26*np.eye(dim)
+        A[2,:,:] = genW(dim, delta)
+        A[3,:,:] = 6*genW(dim, delta)
+        A[4,:,:] = genW(dim, delta) + 26*delta * np.eye(dim)
+        A /= 26
+    elif degree == 6:
+        A[0,:,:] = 4096*genW(dim, delta)
+        A[1,:,:] = 56*genW(dim, delta) - 6200*np.eye(dim)
+        A[2,:,:] = 384*genW(dim, delta)
+        A[3,:,:] = 1312*genW(dim, delta)
+        A[4,:,:] = 321*genW(dim, delta)
+        A[5,:,:] = 30*genW(dim, delta)
+        A[6,:,:] = genW(dim, delta) + 6200*delta * np.eye(dim)
+        A /= 6200
+    elif degree == 8:
+        A[0,:,:] = 2985984*genW(dim, delta)
+        A[1,:,:] = 21024*genW(dim, delta) - 4500000*np.eye(dim)
+        A[2,:,:] = 311040*genW(dim, delta)
+        A[3,:,:] = 905472*genW(dim, delta)
+        A[4,:,:] = 244080*genW(dim, delta)
+        A[5,:,:] = 30312*genW(dim, delta)
+        A[6,:,:] = 2017*genW(dim, delta)
+        A[7,:,:] = 70*genW(dim, delta)
+        A[8,:,:] = genW(dim, delta) + 4500000*delta*np.eye(dim)
+        A /= 4500000
+    else:
+        raise ValueError('degree 2, 4, 6, 8 외에는 준비되지 않았습니다.')
+    return A
+
+def genW(dim, delta = 0):
+    K = np.random.rand(dim, dim)
+    for i in range(dim):
+        K[i,i] = 0
+    k = np.sum(K, axis = 1)
+    for j in range(dim):
+        K[j,:] = K[j,:]/k[j]
+    W = (1 - delta) * K
+    return W
+
 def SimpNewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
     if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         X0 = np.zeros((A.shape[1],A.shape[2]))
