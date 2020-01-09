@@ -9,7 +9,7 @@ from time import time
 from matplotlib import pyplot as plt
 import os
 
-def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
+def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_iter = 2):
     if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         X0 = np.zeros((A.shape[1],A.shape[2]))
     
@@ -29,6 +29,7 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
     err = 1e10 # error 초기화
     
     # Newton Iteration 시작
+    c_time = time()
     while (err > tol) and (iter < maxiter):
         P_X = np.zeros((m**2, m**2))
         for k in range(1,n+1):
@@ -63,12 +64,45 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
             Hs.append(H) # H_i 저장
             errs.append(err) # err 저장
             
+        elif cls == 'MLSearch':
+            if iter < LS_iter:
+                X0 = X0 - H # Newton Sequence 적용
+                err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            else:
+                pt = np.zeros(2*n + 1)
+                for t in range(2*n + 1):
+                    pt[t] = CoeffiLSearch(A, X0, -H, t)
+                pt = np.flip(pt)
+                ptder = np.polyder(pt)
+                critic = np.roots(ptder)
+                val = np.polyval(pt, critic)
+                val = np.where(np.logical_and(critic >= 1, critic <= 2), val, np.infty)
+                if np.sum(np.isinf(val)) == len(val):
+                    lamb = 1
+                else:
+                    lamb = np.real(critic[np.argmin(np.abs(val))])
+                print(pt, critic, val, lamb)
+                
+                X0 = X0 - lamb * H # Newton Line Search 적용
+                err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+                
+            if err <= tol:
+                Xs.append(X0) # X_i 저장
+                Hs.append(H) # H_i 저장
+                errs.append(err) # err 저장
+                break
+            
+            Xs.append(X0) # X_i 저장
+            Hs.append(H) # H_i 저장
+            errs.append(err) # err 저장
+            
         else:
             print('준비되지 않은 종류의 Newton method라 pure method로 전환합니다.')
+            iter -= 1
             cls = 'Pure'
             
         iter += 1
-    
+    c_time = time() - c_time
     S = Xs[-1] # Solution
     
     # Vectorize of S - X_{i}와 X_{i+1} - X_{i} : cos 계산
@@ -86,7 +120,37 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
         c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
         cSX.append(c1)
         cXX.append(c2)
-    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX}
+    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time}
+
+def CoeffiLSearch(A, X, H, jq):
+    n = A.shape[0]-1
+    S = np.zeros(X.shape)
+    for p in range(n+1):
+        for k in range(n+1):
+            for q in range(p+1):
+                for j in range(k+1):
+                    if j+q == jq:
+                        S = S + PHIX(X.transpose(), H.transpose(), p, q) @ A[p,:,:].transpose() @ A[k,:,:] @ PHIX(X, H, k, j)
+    return np.trace(S)
+
+def PHIX(X, H, k, j):
+    if k == 0:
+        S = np.eye(X.shape[0])
+    else:
+        L = []
+        phi = [X, H]
+        S = np.zeros(X.shape)
+        P = np.eye(X.shape[0])
+        for p in range(2**k):
+            L.append(("{:{fill}"+str(k)+"b}").format(p, fill="0"))
+        L = [[int(l) for l in ll] for ll in L]
+        for l in L:
+            if sum(l) == j:
+                for i in l:
+                    P = P @ phi[i]
+                S = S + P
+                P = np.eye(X.shape[0])
+    return S
 
 def Pnomial(X, A):
 #     S = np.zeros((X.shape[0],X.shape[1]))
