@@ -81,7 +81,6 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
                     lamb = 1
                 else:
                     lamb = np.real(critic[np.argmin(np.abs(val))])
-                print(pt, critic, val, lamb)
                 
                 X0 = X0 - lamb * H # Newton Line Search 적용
                 err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
