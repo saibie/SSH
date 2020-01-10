@@ -37,12 +37,12 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
                 P_X = P_X + np.kron(nla.matrix_power(X0.transpose(),k-l-1), A[k,:,:] @ nla.matrix_power(X0, l))
         P_Xs.append(P_X) # P_X_i 저장
         vP = np.reshape(Pnomial(X0, A), m**2, 'F') # Reshape는 반드시 Fortran 방식으로
-        h = nla.solve(P_X, vP)
+        h = -nla.solve(P_X, vP)
 #         h = nla.lstsq(P_X, vP)[0]
         H = np.reshape(h, (m, m), order = 'F')
         
         if cls == 'Pure':
-            X0 = X0 - H # Newton Sequence 적용
+            X0 = X0 + H # Newton Sequence 적용
             err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
             
             Xs.append(X0) # X_i 저장
@@ -50,14 +50,14 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
             errs.append(err) # err 저장
         
         elif cls == 'Modified':
-            X0 = X0 - 2*H # modified Newton Sequence 적용
+            X0 = X0 + 2*H # modified Newton Sequence 적용
             err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
             if err <= tol:
                 Xs.append(X0) # X_i 저장
                 Hs.append(H) # H_i 저장
                 errs.append(err) # err 저장
                 break
-            X0 = X0 + H # pure Newton 재적용
+            X0 = X0 - H # pure Newton 재적용
             err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
             
             Xs.append(X0) # X_i 저장
@@ -66,12 +66,12 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
             
         elif cls == 'MLSearch':
             if iter < LS_iter:
-                X0 = X0 - H # Newton Sequence 적용
+                X0 = X0 + H # Newton Sequence 적용
                 err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
             else:
                 pt = np.zeros(2*n + 1)
                 for t in range(2*n + 1):
-                    pt[t] = CoeffiLSearch(A, X0, -H, t)
+                    pt[t] = CoeffiLSearch(A, X0, H, t)
                 pt = np.flip(pt)
                 ptder = np.polyder(pt)
                 critic = np.roots(ptder)
@@ -82,7 +82,7 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
                 else:
                     lamb = np.real(critic[np.argmin(np.abs(val))])
                 
-                X0 = X0 - lamb * H # Newton Line Search 적용
+                X0 = X0 + lamb * H # Newton Line Search 적용
                 err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
                 
             if err <= tol:
@@ -293,11 +293,11 @@ def SimpNewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
         for k in range(1,n+1):
             P_X = P_X + k * A[k,:,:] @ nla.matrix_power(X0,k-1)
         P_Xs.append(P_X) # P_X_i 저장
-        H = nla.solve(P_X,Pnomial(X0, A))
+        H = -nla.solve(P_X,Pnomial(X0, A))
 #         H = nla.lstsq(P_X,Pnomial(X0, A))[0]
         
         if cls == 'Pure':
-            X0 = X0 - H # Newton Sequence 적용
+            X0 = X0 + H # Newton Sequence 적용
             err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
             
             Xs.append(X0) # X_i 저장
@@ -305,14 +305,14 @@ def SimpNewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'):
             errs.append(err) # err 저장
         
         elif cls == 'Modified':
-            X0 = X0 - 2*H # modified Newton Sequence 적용
+            X0 = X0 + 2*H # modified Newton Sequence 적용
             err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
             if err <= tol:
                 Xs.append(X0) # X_i 저장
                 Hs.append(H) # H_i 저장
                 errs.append(err) # err 저장
                 break
-            X0 = X0 + H # pure Newton 재적용
+            X0 = X0 - H # pure Newton 재적용
             err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
             
             Xs.append(X0) # X_i 저장
