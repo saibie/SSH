@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -8,22 +9,49 @@ class MyWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
-        self.setLayout(self.layout)
+#         self.setLayout(self.layout)
         self.setGeometry(200, 200, 800, 600)
         
     def initUI(self):
         self.fig = plt.Figure()
         self.canvas = FigureCanvas(self.fig)
         
-        layout = QVBoxLayout()
-        layout.addWidget(self.canvas)
+        layout = QGridLayout()
+        self.setLayout(layout)
+        
+        layout.addWidget(self.canvas, 0, 0)
         cb = QComboBox()
         cb.addItem('Graph1')
         cb.addItem('Graph2')
         cb.activated[str].connect(self.onComboBoxChanged)
-        layout.addWidget(cb)
-        self.layout = layout
-#         self.onComboBoxChanged(cb.currentText())
+        layout.addWidget(cb, 1, 0)
+        
+#         QWidget.__init__(self, *args, **kwargs)
+        self.treeview = QTreeView()
+        self.listview = QListView()
+        layout.addWidget(self.treeview, 0, 1)
+        layout.addWidget(self.listview, 1, 1)
+
+        path = '..'
+        
+        self.dirModel = QFileSystemModel()
+        self.dirModel.setRootPath(QDir.rootPath())
+        self.dirModel.setFilter(QDir.NoDotDot | QDir.AllDirs)
+        
+        self.fileModel = QFileSystemModel()
+        self.fileModel.setFilter(QDir.NoDotAndDotDot |  QDir.Files)
+
+        self.treeview.setModel(self.dirModel)
+        self.listview.setModel(self.fileModel)
+
+        self.treeview.setRootIndex(self.dirModel.index(path))
+        self.listview.setRootIndex(self.fileModel.index(path))
+
+        self.treeview.clicked.connect(self.on_clicked)
+        
+        self.onComboBoxChanged(cb.currentText())
+        
+        
         
     def onComboBoxChanged(self, text):
         if text == 'Graph1':
@@ -60,6 +88,12 @@ class MyWindow(QWidget):
         ax.plot_wireframe(X, Y, Z, color='black')
         self.canvas.draw()
         
+        
+    def on_clicked(self, index):
+        path = self.dirModel.fileInfo(index).absoluteFilePath()
+        self.listview.setRootIndex(self.fileModel.setRootPath(path))
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MyWindow()
