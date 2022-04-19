@@ -261,7 +261,7 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
 def CRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
     if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         T0 = A[1]
-        X0 = np.zeros(A.shape[1:])
+        X0 = -nla.solve(A[1], A[0])
     
     if A.shape[1] != A.shape[2]: # A가 square matrices의 모음이 아닐 때 예외처리
         raise ValueError('A가 정방행렬이 아닙니다.')
@@ -295,6 +295,74 @@ def CRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
         
         err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
 
+        Xs.append(X0) # X_i 저장
+        errs.append(err) # err 저장
+        print('{:03d}'.format(iter), end = '\r')
+        iter += 1
+        
+    c_time = time() - c_time
+    S = Xs[-1] # Solution
+    
+    # Vectorize of S - X_{i}와 X_{i+1} - X_{i} : cos 계산
+    vSmX = []
+    vXmX = []
+    for i in range(len(Xs)-1):
+        vSmX.append(np.reshape(S - Xs[i], S.shape[0]*S.shape[1], order='F'))
+        vXmX.append(np.reshape(Xs[i+1] - Xs[i], S.shape[0]*S.shape[1], order='F'))
+    cSX = []
+    cXX = []
+    for i in range(len(vSmX)-1):
+        x1, y1 = vSmX[i+1], vSmX[i]
+        x2, y2 = vXmX[i+1], vXmX[i]
+        c1 = np.dot(x1,y1) / (nla.norm(x1,2)*nla.norm(y1,2))
+        c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
+        cSX.append(c1)
+        cXX.append(c2)
+    return {'sol':S, 'Xs':Xs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time}
+
+def BrunoCRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
+    if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
+        AH, AT = A[1], A[1]
+        X0 = -nla.solve(A[1], A[0])
+    
+    if A.shape[1] != A.shape[2]: # A가 square matrices의 모음이 아닐 때 예외처리
+        raise ValueError('A가 정방행렬이 아닙니다.')
+        
+    m, n = A.shape[1], A.shape[0]-1 # m, n 초기화
+    
+    if np.isnan(tol): # tol이 주어지지 않았을 때 초기화
+        tol = m * 1e-15
+        
+    Xs = [X0] # Xs는 X들을 담은 리스트로 초기화
+    S = np.zeros((A.shape[1],A.shape[2]))
+    
+    iter = 0
+    err = nla.norm(Pnomial(X0, A), 'fro') # error 초기화
+    errs = [err] # error 리스트 초기화
+    L = []
+    
+    A0, B0, C0 = A[2], A[1], A[0]
+    
+    # Newton Iteration 시작
+    c_time = time()
+    while (err > tol) and (iter < maxiter):
+        F = np.concatenate((C0, A0), axis=0) @ nla.inv(B0)
+        F0 = F[:m, :]
+        F2 = F[m:, :]        
+        W = F2 @ C0
+        C0 = F0 @ C0
+        AH = AH - W
+        B0 = B0 - W
+        W = F0 @ A0
+        A0 = F2 @ A0
+        AT = AT - W
+        B0 = B0 - W
+        
+        X0 = -nla.inv(AH) @ A[0]
+        
+        err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+        # err = np.min([nla.norm(C0, 1), nla.norm(A0, 1)]) # err 계산
+        
         Xs.append(X0) # X_i 저장
         errs.append(err) # err 저장
         print('{:03d}'.format(iter), end = '\r')
