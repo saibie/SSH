@@ -320,7 +320,7 @@ def CRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
         cXX.append(c2)
     return {'sol':S, 'Xs':Xs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time}
 
-def BrunoCRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
+def BrunoCRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, criteria = 0):
     if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         AH, AT = A[1], A[1]
         X0 = -nla.solve(A[1], A[0])
@@ -360,11 +360,14 @@ def BrunoCRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
         
         X0 = -nla.inv(AH) @ A[0]
         
-        err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
-        # err = np.min([nla.norm(C0, 1), nla.norm(A0, 1)]) # err 계산
+        if criteria == 1:
+            err = np.min([nla.norm(C0, 1), nla.norm(A0, 1)]) # err 계산
+            errs.append(nla.norm(Pnomial(X0, A), 'fro')) # err 저장
+        else:
+            err = nla.norm(Pnomial(X0, A), 'fro') # err 계산
+            errs.append(err) # err 저장
         
         Xs.append(X0) # X_i 저장
-        errs.append(err) # err 저장
         print('{:03d}'.format(iter), end = '\r')
         iter += 1
         
