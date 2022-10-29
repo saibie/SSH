@@ -9,6 +9,9 @@ from time import time
 from matplotlib import pyplot as plt
 import os
 
+# ==============================================================================================
+# Newton Methods ===============================================================================
+# ==============================================================================================
 def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_iter = 2, alpha = .5):
     if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         X0 = np.zeros((A.shape[1],A.shape[2]))
@@ -258,6 +261,68 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
         cXX.append(c2)
     return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time, 'lamb':L}
 
+def NewtonPolyModified(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_iter = 2, alpha = .5):
+    if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
+        X0 = np.zeros((A.shape[1],A.shape[2]))
+    
+    if A.shape[1] != A.shape[2]: # A가 square matrices의 모음이 아닐 때 예외처리
+        raise ValueError('A가 정방행렬이 아닙니다.')
+        
+    m, n = A.shape[1], A.shape[0]-1 # m, n 초기화
+    
+    if np.isnan(tol): # tol이 주어지지 않았을 때 초기화
+        tol = m * 1e-15
+        
+    Xs = [X0] # Xs는 X들을 담은 리스트로 초기화
+    P_Xs, Hs = [], [] # P_X, H 리스트 초기화
+    S = np.zeros((A.shape[1],A.shape[2]))
+    
+    iter = 0
+    err = nla.norm(Pnomial(X0, A), 'fro') # error 초기화
+    errs = [err] # error 리스트 초기화
+    L = []
+    
+    # Newton Iteration 시작
+    c_time = time()
+    while (err > tol) and (iter < maxiter):
+        P_X = Deriv_P_Modified(X0, A)
+        P_Xs.append(P_X) # P_X_i 저장
+        vP = np.reshape(MPnomial(X0, A), m**2, 'F') # Reshape는 반드시 Fortran 방식으로
+        h = nla.solve(P_X, vP)
+#         h = nla.lstsq(P_X, vP)[0]
+        H = np.reshape(h, (m, m), order = 'F')
+        
+        if cls == 'Pure':
+            X0 = X0 - H # Newton Sequence 적용
+            err = nla.norm(MPnomial(X0, A), 'fro') # err 계산
+            
+            Xs.append(X0) # X_i 저장
+            Hs.append(H) # H_i 저장
+            errs.append(err) # err 저장
+        
+        iter += 1
+    c_time = time() - c_time
+    S = Xs[-1] # Solution
+    
+    # Vectorize of S - X_{i}와 X_{i+1} - X_{i} : cos 계산
+    vSmX = []
+    vXmX = []
+    for i in range(len(Xs)-1):
+        vSmX.append(np.reshape(S - Xs[i], S.shape[0]*S.shape[1], order='F'))
+        vXmX.append(np.reshape(Xs[i+1] - Xs[i], S.shape[0]*S.shape[1], order='F'))
+    cSX = []
+    cXX = []
+    for i in range(len(vSmX)-1):
+        x1, y1 = vSmX[i+1], vSmX[i]
+        x2, y2 = vXmX[i+1], vXmX[i]
+        c1 = np.dot(x1,y1) / (nla.norm(x1,2)*nla.norm(y1,2))
+        c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
+        cSX.append(c1)
+        cXX.append(c2)
+    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time, 'lamb':L}
+# ==============================================================================================
+# ==============================================================================================
+
 def CRPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN):
     if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
         T0 = A[1]
@@ -421,6 +486,9 @@ def PHIX(X, H, k, j):
                 P = np.eye(X.shape[0])
     return S
 
+# ==============================================================================================
+# Polynomials and Derivatives =================================================================
+# ==============================================================================================
 def Pnomial(X, A):
 #     S = np.zeros((X.shape[0],X.shape[1]))
 #     for k in range(A.shape[0]):
@@ -428,6 +496,13 @@ def Pnomial(X, A):
     Y = A[-1,:,:]
     for i in range(2, A.shape[0]+1):
         Y = A[-i,:,:] + Y @ X # 계산 수를 줄인 polynomial 계산 함수
+    return Y
+
+def MPnomial(X, A):
+#     S = np.zeros((X.shape[0],X.shape[1]))
+#     for k in range(A.shape[0]):
+#         S = S + A[k,:,:] @ nla.matrix_power(X, k)
+    Y = X + nla.inv(Pnomial(X, A[1:,:,:])) @ A[0]
     return Y
 
 def ePnomial(X, A):
@@ -439,6 +514,28 @@ def ePnomial(X, A):
         Y = A[-i,:,:] + Y * X # 계산 수를 줄인 polynomial 계산 함수
     return Y
 
+def Deriv_P(X, A):
+    m = X.shape[0]
+    n = A.shape[0]-1
+    P_X = np.zeros((m**2, m**2))
+    for k in range(1, n+1):
+        P_X = P_X + np.kron(nla.matrix_power(X.transpose(), k-1), Pnomial(X, A[k:,:,:]))
+    return P_X
+
+def Deriv_P_Modified(X, A):
+    m = X.shape[0]
+    n = A.shape[0]-1
+    T = Deriv_P(X, A[1:, :, :])
+    Ginv = nla.inv(Pnomial(X, A[1:, :, :]))
+    T = np.kron(A[0,:,:].transpose() @ Ginv.transpose(), Ginv) @ T
+    P_X = np.eye(m**2) - T
+    return P_X
+# ==============================================================================================
+# ==============================================================================================
+
+# ==============================================================================================
+# Make Coefficient Matrices ===================================================================
+# ==============================================================================================
 def MakeStochA(dim, degree = 1):
     A = np.random.rand(degree + 1, dim, dim)
     b = np.sum(A, axis = (0, 2))
@@ -635,3 +732,5 @@ def genW(dim, delta = 0, ZDiag = True):
         K[j,:] = K[j,:]/k[j]
     W = (1 - delta) * K
     return W
+# ==============================================================================================
+# ==============================================================================================
