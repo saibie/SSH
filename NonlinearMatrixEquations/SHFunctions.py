@@ -32,14 +32,17 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
     err = nla.norm(Pnomial(X0, A), 'fro') # error 초기화
     errs = [err] # error 리스트 초기화
     L = []
+    i_times = []
     
     # Newton Iteration 시작
     c_time = time()
     while (err > tol) and (iter < maxiter):
+        i_time = time()
         P_X = np.zeros((m**2, m**2))
-        for k in range(1,n+1):
-            for l in range(k):
-                P_X = P_X + np.kron(nla.matrix_power(X0.transpose(),k-l-1), A[k,:,:] @ nla.matrix_power(X0, l))
+        # for k in range(1,n+1):
+        #     for l in range(k):
+        #         P_X = P_X + np.kron(nla.matrix_power(X0.transpose(),k-l-1), A[k,:,:] @ nla.matrix_power(X0, l))
+        P_X = Deriv_P(X0, A)
         P_Xs.append(P_X) # P_X_i 저장
         vP = np.reshape(Pnomial(X0, A), m**2, 'F') # Reshape는 반드시 Fortran 방식으로
         h = nla.solve(P_X, vP)
@@ -240,6 +243,7 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
             iter -= 1
             cls = 'Pure'
             
+        i_times.append(time() - i_time)
         iter += 1
     c_time = time() - c_time
     S = Xs[-1] # Solution
@@ -259,7 +263,7 @@ def NewtonPoly(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_ite
         c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
         cSX.append(c1)
         cXX.append(c2)
-    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time, 'lamb':L}
+    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time, 'lamb':L, 'IterTime':i_times}
 
 def NewtonPolyModified(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure', LS_iter = 2, alpha = .5):
     if np.sum(np.isnan(X0)) > 0: # X0가 주어지지 않았을 때 m by m zero 행렬 처리
@@ -281,10 +285,12 @@ def NewtonPolyModified(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'
     err = nla.norm(Pnomial(X0, A), 'fro') # error 초기화
     errs = [err] # error 리스트 초기화
     L = []
+    i_times = []
     
     # Newton Iteration 시작
     c_time = time()
     while (err > tol) and (iter < maxiter):
+        i_time = time()
         P_X = Deriv_P_Modified(X0, A)
         P_Xs.append(P_X) # P_X_i 저장
         vP = np.reshape(MPnomial(X0, A), m**2, 'F') # Reshape는 반드시 Fortran 방식으로
@@ -300,6 +306,7 @@ def NewtonPolyModified(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'
             Hs.append(H) # H_i 저장
             errs.append(err) # err 저장
         
+        i_times.append(time() - i_time)
         iter += 1
     c_time = time() - c_time
     S = Xs[-1] # Solution
@@ -319,7 +326,7 @@ def NewtonPolyModified(A, X0 = np.NAN, maxiter = 100, tol = np.NAN, cls = 'Pure'
         c2 = np.dot(x2,y2) / (nla.norm(x2,2)*nla.norm(y2,2))
         cSX.append(c1)
         cXX.append(c2)
-    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time, 'lamb':L}
+    return {'sol':S, 'Xs':Xs, 'P_Xs':P_Xs, 'Hs':Hs, 'errs':errs, 'SmX':vSmX, 'XmX':vXmX, 'csSmX':cSX, 'csXmX':cXX, 'CalTime':c_time, 'lamb':L, 'IterTime':i_times}
 # ==============================================================================================
 # ==============================================================================================
 
